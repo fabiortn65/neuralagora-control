@@ -43,13 +43,30 @@ def test_formato_multimodale():
     assert d.categoria == "documenti_lunghi"
 
 
-def test_link_va_al_web():
+def test_link_attiva_il_web():
     d = decidi("https://github.com/latent-spaces/brag cosa fa?")
-    assert d.categoria == "web"
-    assert d.gestore == "gemini_web"
+    assert d.serve_web
+    assert d.motivo_web == "link nel messaggio"
 
 
-def test_comando_web():
-    d = decidi("@web risultati di oggi")
-    assert d.categoria == "web"
-    assert d.testo_pulito == "risultati di oggi"
+def test_comando_web_con_agente():
+    d = decidi("@web @claude riassumi le novità di Python 3.14")
+    assert d.serve_web
+    assert d.categoria == "codice_complesso"
+    assert d.testo_pulito == "riassumi le novità di Python 3.14"
+
+
+def test_parola_chiave_web():
+    d = decidi("che tempo fa? dimmi il meteo di Rieti")
+    assert d.serve_web
+
+
+def test_immagini_senza_web():
+    d = decidi("crea un'immagine del meteo di oggi")
+    assert d.categoria == "immagine"
+    assert not d.serve_web
+
+
+def test_domanda_normale_senza_web():
+    d = decidi("ciao, come stai?")
+    assert not d.serve_web

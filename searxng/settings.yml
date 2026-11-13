@@ -1,0 +1,18 @@
+# Configurazione minima di SearXNG per Neural Agorà Control.
+# Usato solo dal Capo, dentro Docker: non è raggiungibile da fuori.
+use_default_settings: true
+
+general:
+  instance_name: "Neural Agorà Ricerca"
+
+search:
+  safe_search: 0
+  default_lang: "it"
+  formats:
+    - html
+    - json
+
+server:
+  limiter: false
+  image_proxy: false
+  # La chiave segreta arriva dalla variabile SEARXNG_SECRET (file .env)

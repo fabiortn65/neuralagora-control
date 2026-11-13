@@ -12,7 +12,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
-from . import locale, runpod_client, web
+from . import locale, ricerca, runpod_client, web
 from .router import Decisione, Router
 
 LITELLM_URL = os.getenv("LITELLM_URL", "http://localhost:4000")
@@ -31,7 +31,38 @@ app.mount("/output", StaticFiles(directory=runpod_client.CARTELLA_OUTPUT), name=
 
 # ------------------------------------------------------------------ utilità
 def _intestazione(d: Decisione) -> str:
-    return f"> 🏛️ **Capo** → {d.agente} · *{d.motivo}*\n\n"
+    web = f" · 🔎 web (*{d.motivo_web}*)" if d.serve_web else ""
+    return f"> 🏛️ **Capo** → {d.agente} · *{d.motivo}*{web}\n\n"
+
+
+def _fonti_md(fonti: list[tuple[str, str]]) -> str:
+    if not fonti:
+        return ""
+    return "\n\n**Fonti:**\n" + "\n".join(f"- [{t.strip() or u}]({u})" for t, u in fonti[:8])
+
+
+async def _aggiungi_web(corpo: dict, d: Decisione) -> tuple[dict, list[tuple[str, str]], str]:
+    """Cerca sul web e inserisce il materiale trovato prima dell'ultima domanda. Restituisce (corpo, fonti, nota)."""
+    messaggi = corpo.get("messages", [])
+    domanda = Router.ultimo_messaggio(messaggi)
+    try:
+        contesto, fonti = await ricerca.contesto_web(domanda, query=domanda[:300], max_caratteri=d.max_contesto_web)
+    except Exception as e:
+        log.warning("Ricerca web non riuscita: %r", e)
+        contesto, fonti = "", []
+    if not contesto:
+        return corpo, [], "_(ricerca sul web non riuscita: rispondo con quello che so)_\n\n"
+    blocco = {
+        "role": "system",
+        "content": "Informazioni raccolte ORA dal web per rispondere all'ultima domanda dell'utente. "
+                   "Usale come fonte principale, cita le fonti (URL) che usi e segnala se le informazioni "
+                   "non bastano. Non dire che non puoi accedere a internet: il Capo lo ha fatto per te.\n\n"
+                   + contesto,
+    }
+    idx = max((i for i, m in enumerate(messaggi) if m.get("role") == "user"), default=len(messaggi))
+    nuovi = list(messaggi[:idx]) + [blocco] + list(messaggi[idx:])
+    log.info("Web: %d fonti, %d caratteri di contesto", len(fonti), len(contesto))
+    return {**corpo, "messages": nuovi}, fonti, ""
 
 
 def _e_compito_interfaccia(messages: list[dict]) -> bool:
@@ -140,8 +171,12 @@ async def _inoltra(corpo: dict, d: Decisione, stream: bool, intestazione: bool =
         corpo = {k: v for k, v in corpo.items() if k not in CAMPI_STRUMENTI}
     headers = HEADERS
     url = f"{LITELLM_URL}/v1/chat/completions"
+    usa_web = intestazione and d.serve_web
 
     if not stream:
+        fonti, nota = [], ""
+        if usa_web:
+            corpo, fonti, nota = await _aggiungi_web(corpo, d)
         async with httpx.AsyncClient(timeout=600) as client:
             r = await client.post(url, headers=headers, json=corpo)
         if r.status_code != 200:
@@ -149,13 +184,20 @@ async def _inoltra(corpo: dict, d: Decisione, stream: bool, intestazione: bool =
         dati = r.json()
         if intestazione:
             msg = dati["choices"][0]["message"]
-            msg["content"] = _intestazione(d) + (msg.get("content") or "")
+            msg["content"] = _intestazione(d) + nota + (msg.get("content") or "") + _fonti_md(fonti)
         dati["model"] = NOME_MODELLO
         return JSONResponse(dati)
 
     async def generatore():
+        nonlocal corpo
+        fonti: list[tuple[str, str]] = []
         if intestazione:
             yield _chunk(_intestazione(d))
+        if usa_web:
+            yield _chunk("🔎 Cerco sul web...\n\n")
+            corpo, fonti, nota = await _aggiungi_web(corpo, d)
+            if nota:
+                yield _chunk(nota)
         async with httpx.AsyncClient(timeout=600) as client:
             async with client.stream("POST", url, headers=headers, json=corpo) as r:
                 if r.status_code != 200:
@@ -177,6 +219,9 @@ async def _inoltra(corpo: dict, d: Decisione, stream: bool, intestazione: bool =
                         yield _chunk("", fine=True)
                         yield "data: [DONE]\n\n"
                         return
+                    if riga.strip() == "data: [DONE]" and fonti:
+                        yield _chunk(_fonti_md(fonti))
+                        fonti = []
                     yield riga + "\n\n"
 
     return StreamingResponse(generatore(), media_type="text/event-stream")

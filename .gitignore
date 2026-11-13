@@ -30,3 +30,7 @@ rules.local.yaml
 .idea/
 .DS_Store
 Thumbs.db
+
+# File generati da SearXNG al primo avvio
+searxng/uwsgi.ini
+searxng/limiter.toml

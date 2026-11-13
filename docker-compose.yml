@@ -35,12 +35,23 @@ services:
       retries: 10
     restart: unless-stopped
 
+  # Motore di ricerca per il Capo (gratuito, senza chiavi): raggiungibile solo dai container
+  searxng:
+    image: searxng/searxng:latest
+    environment:
+      SEARXNG_SECRET: ${SEARXNG_SECRET:-cambiami}
+      SEARXNG_BASE_URL: http://searxng:8080/
+    volumes:
+      - ./searxng:/etc/searxng
+    restart: unless-stopped
+
   # Il Capo: classifica la richiesta e la smista
   capo:
     build: ./capo
     env_file: .env
     environment:
       LITELLM_URL: http://litellm:4000
+      SEARXNG_URL: http://searxng:8080
     volumes:
       - ./capo/rules.yaml:/app/rules.yaml:ro
       - ./runpod/workflows:/app/workflows:ro
@@ -49,6 +60,7 @@ services:
       - "8100:8100"
     depends_on:
       - litellm
+      - searxng
     restart: unless-stopped
 
   # Interfaccia web
