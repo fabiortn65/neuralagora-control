@@ -13,7 +13,7 @@
 Con una scheda video da 6 GB (es. GTX 1660) questi due modelli girano bene:
 
 ```bash
-ollama pull qwen3:4b
+ollama pull qwen3:4b-instruct-2507-q4_K_M
 ollama pull qwen2.5-coder:3b
 ```
 

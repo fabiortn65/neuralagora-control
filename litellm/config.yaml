@@ -10,7 +10,7 @@ model_list:
   # --- Locale (gratis) ---
   - model_name: locale-chat
     litellm_params:
-      model: ollama_chat/qwen3:4b
+      model: ollama_chat/qwen3:4b-instruct-2507-q4_K_M
       api_base: os.environ/OLLAMA_BASE_URL
 
   - model_name: locale-coder

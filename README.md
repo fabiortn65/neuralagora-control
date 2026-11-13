@@ -53,7 +53,7 @@ Requisiti: [Docker](https://docs.docker.com/get-docker/) e [Ollama](https://olla
 git clone https://github.com/<tuo-utente>/neuralagora-control.git
 cd neuralagora-control
 cp .env.example .env          # poi inserisci le tue chiavi (facoltative)
-ollama pull qwen3:4b          # modello per chat e classificazione
+ollama pull qwen3:4b-instruct-2507-q4_K_M          # modello per chat e classificazione
 ollama pull qwen2.5-coder:3b  # modello per il codice
 docker compose up -d
 ```

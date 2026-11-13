@@ -11,7 +11,7 @@
 classificatore: locale-chat
 
 # Nome del modello in Ollama usato per i lavori interni veloci (classificare, scrivere prompt visivi)
-modello_locale_ollama: qwen3:4b
+modello_locale_ollama: qwen3:4b-instruct-2507-q4_K_M
 
 # Oltre questo numero di caratteri la conversazione va al modello per documenti lunghi
 soglia_testo_lungo: 30000
@@ -65,7 +65,6 @@ istruzioni_sistema: |
   smista le richieste tra più agenti. Rispondi sempre in italiano, in modo chiaro
   e diretto. Quando scrivi codice, usa blocchi di codice con il linguaggio indicato.
   Non inventare funzioni o strumenti che non hai.
-  /no_think
 
 # Categoria usata se la classificazione non è chiara
 predefinita: chat

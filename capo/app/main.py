@@ -150,8 +150,19 @@ async def _inoltra(corpo: dict, d: Decisione, stream: bool, intestazione: bool =
                     yield "data: [DONE]\n\n"
                     return
                 async for riga in r.aiter_lines():
-                    if riga:
-                        yield riga + "\n\n"
+                    if not riga:
+                        continue
+                    if riga.startswith("data:") and '"error"' in riga[:200]:
+                        try:
+                            dettaglio = json.loads(riga[5:].strip()).get("error")
+                        except Exception:
+                            dettaglio = riga[5:200]
+                        log.warning("Errore in streaming da %s: %s", d.agente, str(dettaglio)[:300])
+                        yield _chunk(f"\n\n⚠️ Errore da {d.agente}: {str(dettaglio)[:400]}")
+                        yield _chunk("", fine=True)
+                        yield "data: [DONE]\n\n"
+                        return
+                    yield riga + "\n\n"
 
     return StreamingResponse(generatore(), media_type="text/event-stream")
 
@@ -163,7 +174,7 @@ async def _prompt_visivo(richiesta: str) -> str:
         testo = await locale.chiedi(
             "Rewrite this request as one detailed English prompt for an image/video "
             "generation model. Reply with the prompt only, no quotes, no explanations.\n\n" + richiesta,
-            modello_ollama=router.regole.get("modello_locale_ollama", "qwen3:4b"),
+            modello_ollama=router.regole.get("modello_locale_ollama", "qwen3:4b-instruct-2507-q4_K_M"),
             alias_litellm="locale-chat",
             litellm_url=LITELLM_URL,
             litellm_key=LITELLM_KEY,
@@ -174,6 +185,9 @@ async def _prompt_visivo(richiesta: str) -> str:
         log.warning("Prompt visivo non riuscito: %r", e)
         return richiesta
     testo = testo.strip().strip('"')
+    if len(testo) > 800 or testo.lower().startswith(("we are", "okay", "let's", "first,")):
+        log.warning("Prompt visivo scartato: sembra un ragionamento, non un prompt")
+        return richiesta
     if not testo:
         log.warning("Prompt visivo: risposta vuota dal modello locale")
         return richiesta

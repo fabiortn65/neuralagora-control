@@ -95,7 +95,7 @@ class Router:
         try:
             risposta = await locale.chiedi(
                 prompt,
-                modello_ollama=self.regole.get("modello_locale_ollama", "qwen3:4b"),
+                modello_ollama=self.regole.get("modello_locale_ollama", "qwen3:4b-instruct-2507-q4_K_M"),
                 alias_litellm=self.regole["classificatore"],
                 litellm_url=self.litellm_url,
                 litellm_key=self.litellm_key,
