@@ -62,7 +62,12 @@ Esempio: `@claude rivedi l'architettura di questa app`
 
 ## 6. Controlla la spesa
 
-LiteLLM ha un pannello su **http://localhost:4000/ui** (accesso con la `LITELLM_MASTER_KEY`): lì vedi quanto ha speso ogni modello.
+La protezione vera sono i limiti impostati direttamente dai fornitori:
+
+- **Claude:** console.anthropic.com → Billing e Limits (credito prepagato, ricarica automatica spenta)
+- **Gemini:** aistudio.google.com → uso e fatturazione del progetto
+
+Il `max_budget` in `litellm/config.yaml` è una seconda barriera, ma senza un database si azzera a ogni riavvio di LiteLLM.
 
 ## Problemi comuni
 
