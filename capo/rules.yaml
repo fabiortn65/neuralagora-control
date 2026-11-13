@@ -3,8 +3,9 @@
 #  Ordine delle decisioni:
 #   1. comando forzato all'inizio del messaggio (es. "@claude ...")
 #   2. testo molto lungo  -> documenti_lunghi
-#   3. parole chiave      -> categoria corrispondente
-#   4. altrimenti il modello locale classifica la richiesta
+#   3. richiesta di approfondimento -> agente più capace di quello precedente
+#   4. parole chiave      -> categoria corrispondente
+#   5. altrimenti il modello locale classifica la richiesta
 # ============================================================
 
 # Modello (alias LiteLLM) usato dal Capo per classificare: deve essere locale e gratuito
@@ -26,6 +27,23 @@ ricerca_web:
   parole_chiave: ["cerca su internet", "cerca online", "cerca sul web", "su internet", "ultime notizie",
                   "notizie di oggi", "di oggi", "aggiornato", "prezzo attuale", "quanto costa",
                   "risultati di", "meteo", "leggi questo sito", "apri questo link"]
+
+# Approfondimento automatico: se chiedi di approfondire la risposta precedente,
+# il Capo passa a un agente più capace (e rifà la ricerca web se era stata usata).
+approfondimento:
+  attivo: true
+  max_lunghezza: 250          # solo messaggi brevi ("approfondisci", "spiegami meglio"...)
+  parole_chiave: [approfondisci, approfondire, approfondiamo, approfondimento, "più nel dettaglio",
+                  "più dettagli", "nel dettaglio", "in dettaglio", "spiega meglio", "spiegami meglio",
+                  "dimmi di più", "dimmi qualcosa in più", "più a fondo", "entra nel dettaglio",
+                  "analisi più completa", "risposta più completa", "sviluppa meglio"]
+  # agente della risposta precedente -> agente per l'approfondimento
+  scala:
+    chat: ragionamento
+    codice_semplice: codice_complesso
+    ragionamento: codice_complesso
+    documenti_lunghi: codice_complesso
+  predefinita: ragionamento   # se non si capisce chi ha risposto prima
 
 categorie:
   chat:

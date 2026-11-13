@@ -27,6 +27,7 @@ class Decisione:
     motivo_web: str = ""
     max_contesto_web: int = 12000
     testo_pulito: str | None = None  # messaggio senza il comando forzato
+    domanda_web: str | None = None   # testo da usare per la ricerca web (se diverso dall'ultimo messaggio)
 
 
 class Router:
@@ -64,6 +65,42 @@ class Router:
         return ""
 
     @staticmethod
+    def _testo(m: dict) -> str:
+        c = m.get("content", "")
+        if isinstance(c, list):
+            return " ".join(p.get("text", "") for p in c if p.get("type") == "text")
+        return c or ""
+
+    def _categoria_precedente(self, messages: list[dict]) -> tuple[str | None, bool, str]:
+        """Dalla risposta precedente del Capo: (categoria, usava il web, domanda originale)."""
+        categoria, web, domanda = None, False, ""
+        visto_assistente = False
+        for m in reversed(messages[:-1]):
+            if m.get("role") == "assistant" and not visto_assistente:
+                visto_assistente = True
+                testo = self._testo(m)
+                trovato = re.search(r"\*\*Capo\*\* → (.+?) · ", testo)
+                if trovato:
+                    agente = trovato.group(1).strip()
+                    categoria = next((n for n, c in self.categorie.items() if c.get("agente") == agente), None)
+                web = "🔎 web" in testo[:400] or "**Fonti:**" in testo
+            elif m.get("role") == "user" and visto_assistente:
+                t = self._testo(m).strip()
+                if not self._e_approfondimento(t, controlla_lunghezza=False):
+                    domanda = t
+                    break
+        return categoria, web, domanda
+
+    def _e_approfondimento(self, testo: str, controlla_lunghezza: bool = True) -> bool:
+        cfg = self.regole.get("approfondimento") or {}
+        if not cfg.get("attivo", False):
+            return False
+        if controlla_lunghezza and len(testo) > int(cfg.get("max_lunghezza", 250)):
+            return False
+        minuscolo = testo.lower()
+        return any(p.lower() in minuscolo for p in cfg.get("parole_chiave", []) or [])
+
+    @staticmethod
     def lunghezza_totale(messages: list[dict]) -> int:
         return sum(len(str(m.get("content", ""))) for m in messages)
 
@@ -73,7 +110,7 @@ class Router:
         d = await self._scegli_agente(messages, testo)
         if not self.regole.get("ricerca_web", {}).get("attiva", True) or d.gestore in ("runpod", "runpod_pubblico"):
             return d
-        if not d.serve_web:
+        if not d.serve_web and d.domanda_web is None:
             motivo = self._serve_web(d.testo_pulito if d.testo_pulito is not None else testo)
             if motivo:
                 d.serve_web, d.motivo_web = True, motivo
@@ -111,13 +148,27 @@ class Router:
         if self.lunghezza_totale(messages) > self.regole.get("soglia_testo_lungo", 30000):
             return self._decisione("documenti_lunghi", "testo molto lungo")
 
-        # 3. Parole chiave
+        # 3. Richiesta di approfondimento della risposta precedente
+        if any(m.get("role") == "assistant" for m in messages) and self._e_approfondimento(testo):
+            cfg = self.regole["approfondimento"]
+            prima, web, domanda = self._categoria_precedente(messages)
+            nuova = (cfg.get("scala") or {}).get(prima) if prima else cfg.get("predefinita", "ragionamento")
+            if prima and not nuova:
+                nuova = prima  # già al livello più alto previsto: resta sullo stesso agente
+            d = self._decisione(nuova, "approfondimento")
+            if web and domanda:
+                d.serve_web, d.motivo_web, d.domanda_web = True, "come la risposta precedente", domanda
+            elif domanda:
+                d.domanda_web = domanda
+            return d
+
+        # 4. Parole chiave
         for nome, c in self.categorie.items():
             for parola in c.get("parole_chiave", []) or []:
                 if parola.lower() in minuscolo:
                     return self._decisione(nome, f"parola chiave «{parola}»")
 
-        # 4. Classificazione con il modello locale (sceglie l'agente e se serve internet)
+        # 5. Classificazione con il modello locale (sceglie l'agente e se serve internet)
         categoria, web = await self._classifica(testo)
         d = self._decisione(categoria, "valutazione del Capo")
         if web:

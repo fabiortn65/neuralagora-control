@@ -45,8 +45,10 @@ async def _aggiungi_web(corpo: dict, d: Decisione) -> tuple[dict, list[tuple[str
     """Cerca sul web e inserisce il materiale trovato prima dell'ultima domanda. Restituisce (corpo, fonti, nota)."""
     messaggi = corpo.get("messages", [])
     domanda = Router.ultimo_messaggio(messaggi)
+    if d.domanda_web:  # approfondimento: si cerca sulla domanda originale
+        domanda = f"{d.domanda_web}\n\n{domanda}"
     try:
-        contesto, fonti = await ricerca.contesto_web(domanda, query=domanda[:300], max_caratteri=d.max_contesto_web)
+        contesto, fonti = await ricerca.contesto_web(domanda, query=(d.domanda_web or domanda)[:300], max_caratteri=d.max_contesto_web)
     except Exception as e:
         log.warning("Ricerca web non riuscita: %r", e)
         contesto, fonti = "", []

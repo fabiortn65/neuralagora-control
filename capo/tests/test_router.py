@@ -82,3 +82,40 @@ def test_opus_mai_dal_classificatore():
     import asyncio
     elenco = [n for n, c in router.categorie.items() if not c.get("solo_comando")]
     assert "massimo" not in elenco
+
+
+def _storia(agente, web=False):
+    intest = f"> 🏛️ **Capo** → {agente} · *valutazione del Capo*" + (" · 🔎 web (*link nel messaggio*)" if web else "")
+    return [
+        {"role": "user", "content": "https://github.com/latent-spaces/brag a cosa serve?"},
+        {"role": "assistant", "content": intest + "\n\nServe a ...\n\n**Fonti:**\n- [x](https://x)" if web else intest + "\n\nRisposta"},
+    ]
+
+
+def test_approfondimento_da_locale_passa_a_haiku_con_web():
+    d = decidi("approfondisci", extra=_storia("💬 Locale", web=True))
+    assert d.categoria == "ragionamento"
+    assert d.motivo == "approfondimento"
+    assert d.serve_web
+    assert "latent-spaces/brag" in d.domanda_web
+
+
+def test_approfondimento_da_haiku_passa_a_claude():
+    d = decidi("spiegami meglio", extra=_storia("⚡ Claude Haiku"))
+    assert d.categoria == "codice_complesso"
+    assert not d.serve_web
+
+
+def test_approfondimento_doppio_ritrova_la_domanda_originale():
+    storia = _storia("💬 Locale", web=True) + [
+        {"role": "user", "content": "approfondisci"},
+        {"role": "assistant", "content": "> 🏛️ **Capo** → ⚡ Claude Haiku · *approfondimento* · 🔎 web (*come la risposta precedente*)\n\nDettagli"},
+    ]
+    d = decidi("vai più a fondo", extra=storia)
+    assert d.categoria == "codice_complesso"
+    assert "latent-spaces/brag" in d.domanda_web
+
+
+def test_approfondisci_senza_risposta_precedente_non_scala():
+    d = decidi("approfondisci il tema delle energie rinnovabili")
+    assert d.categoria == "chat"
