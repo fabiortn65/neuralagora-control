@@ -12,7 +12,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
-from . import runpod_client
+from . import locale, runpod_client
 from .router import Decisione, Router
 
 LITELLM_URL = os.getenv("LITELLM_URL", "http://localhost:4000")
@@ -160,34 +160,25 @@ async def _inoltra(corpo: dict, d: Decisione, stream: bool, intestazione: bool =
 async def _prompt_visivo(richiesta: str) -> str:
     """Il modello locale trasforma la richiesta in un prompt visivo in inglese (gratis)."""
     try:
-        async with httpx.AsyncClient(timeout=120) as client:
-            r = await client.post(
-                f"{LITELLM_URL}/v1/chat/completions",
-                headers=HEADERS,
-                json={
-                    "model": "locale-chat",
-                    "temperature": 0.4,
-                    "max_tokens": 400,
-                    "messages": [{"role": "user", "content":
-                        "Rewrite this request as one detailed English prompt for an image/video "
-                        "generation model. Reply with the prompt only. /no_think\n\n" + richiesta}],
-                },
-            )
-            if r.status_code != 200:
-                log.warning("Prompt visivo: LiteLLM ha risposto %s: %s", r.status_code, r.text[:300])
-                return richiesta
-            testo = r.json()["choices"][0]["message"].get("content") or ""
-            if "</think>" in testo:
-                testo = testo.split("</think>")[-1]
-            testo = testo.strip().strip('"')
-            if not testo:
-                log.warning("Prompt visivo: risposta vuota dal modello locale")
-                return richiesta
-            log.info("Prompt visivo: %s", testo[:200])
-            return testo
+        testo = await locale.chiedi(
+            "Rewrite this request as one detailed English prompt for an image/video "
+            "generation model. Reply with the prompt only, no quotes, no explanations.\n\n" + richiesta,
+            modello_ollama=router.regole.get("modello_locale_ollama", "qwen3:4b"),
+            alias_litellm="locale-chat",
+            litellm_url=LITELLM_URL,
+            litellm_key=LITELLM_KEY,
+            max_tokens=300,
+            temperatura=0.4,
+        )
     except Exception as e:
         log.warning("Prompt visivo non riuscito: %r", e)
         return richiesta
+    testo = testo.strip().strip('"')
+    if not testo:
+        log.warning("Prompt visivo: risposta vuota dal modello locale")
+        return richiesta
+    log.info("Prompt visivo: %s", testo[:200])
+    return testo
 
 
 async def _multimedia(corpo: dict, d: Decisione, stream: bool):

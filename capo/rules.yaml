@@ -10,6 +10,9 @@
 # Modello (alias LiteLLM) usato dal Capo per classificare: deve essere locale e gratuito
 classificatore: locale-chat
 
+# Nome del modello in Ollama usato per i lavori interni veloci (classificare, scrivere prompt visivi)
+modello_locale_ollama: qwen3:4b
+
 # Oltre questo numero di caratteri la conversazione va al modello per documenti lunghi
 soglia_testo_lungo: 30000
 

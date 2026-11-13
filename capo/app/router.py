@@ -4,8 +4,13 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
-import httpx
+import logging
+
 import yaml
+
+from . import locale
+
+log = logging.getLogger("uvicorn.error")
 
 
 @dataclass
@@ -84,28 +89,27 @@ class Router:
         prompt = (
             "Sei il Capo di un sistema di agenti AI. Classifica la richiesta in UNA sola categoria.\n"
             f"Categorie:\n{elenco}\n\n"
-            "Rispondi solo con il nome esatto della categoria, nient'altro. /no_think\n\n"
+            "Rispondi solo con il nome esatto della categoria, nient'altro.\n\n"
             f"Richiesta:\n{testo[:4000]}"
         )
         try:
-            async with httpx.AsyncClient(timeout=60) as client:
-                r = await client.post(
-                    f"{self.litellm_url}/v1/chat/completions",
-                    headers={"Authorization": f"Bearer {self.litellm_key}"} if self.litellm_key else {},
-                    json={
-                        "model": self.regole["classificatore"],
-                        "messages": [{"role": "user", "content": prompt}],
-                        "temperature": 0,
-                        "max_tokens": 200,
-                    },
-                )
-                r.raise_for_status()
-                risposta = r.json()["choices"][0]["message"]["content"] or ""
-        except Exception:
+            risposta = await locale.chiedi(
+                prompt,
+                modello_ollama=self.regole.get("modello_locale_ollama", "qwen3:4b"),
+                alias_litellm=self.regole["classificatore"],
+                litellm_url=self.litellm_url,
+                litellm_key=self.litellm_key,
+                max_tokens=20,
+                timeout=60,
+            )
+        except Exception as e:
+            log.warning("Classificazione non riuscita: %r", e)
             return self.regole["predefinita"]
 
-        risposta = re.sub(r"<think>.*?</think>", "", risposta, flags=re.S).strip().lower()
-        for nome in self.categorie:
+        risposta = risposta.lower()
+        for nome in sorted(self.categorie, key=len, reverse=True):
             if nome in risposta:
+                log.info("Classificazione: %s", nome)
                 return nome
+        log.warning("Classificazione non riconosciuta: %r", risposta[:80])
         return self.regole["predefinita"]
