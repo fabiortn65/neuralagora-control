@@ -32,26 +32,30 @@ categorie:
     agente: "💬 Locale"
     modello: locale-chat
     max_contesto_web: 3500
-    descrizione: conversazione, domande generiche, spiegazioni brevi, traduzioni
+    costo: gratis
+    descrizione: conversazione, domande e informazioni generiche, spiegazioni, cosa fa un progetto o una pagina web, riassunti brevi, traduzioni semplici, consigli
     comando: "@locale"
 
   codice_semplice:
     agente: "🧑‍💻 Coder locale"
     modello: locale-coder
     max_contesto_web: 3500
-    descrizione: piccoli script, una funzione, correzioni rapide, HTML/CSS semplice
+    costo: gratis
+    descrizione: piccoli script, una funzione, correzioni rapide, HTML/CSS semplice, spiegare un pezzo di codice
     comando: "@coder"
     parole_chiave: [regex, "query sql", "una funzione", "script veloce"]
 
   ragionamento:
     agente: "⚡ Claude Haiku"
     modello: cloud-veloce
-    descrizione: richieste che il modello locale non fa bene ma non complesse - spiegazioni dettagliate, testi ed email curati, riassunti, traduzioni accurate, revisione di testi, codice di media difficoltà
+    costo: basso
+    descrizione: solo se il locale non basta - testi lunghi e curati da inviare o pubblicare, traduzioni professionali, revisione accurata di documenti, codice di media difficoltà su più funzioni
     comando: "@haiku"
 
   codice_complesso:
     agente: "🧠 Claude"
     modello: cloud-codice
+    costo: medio
     descrizione: compiti difficili - app o siti interi, architettura, refactoring multi-file, debug difficile, analisi e ragionamenti complessi
     comando: "@claude"
     parole_chiave: [architettura, refactoring, "intera app", "progetta", debug]
@@ -59,6 +63,7 @@ categorie:
   massimo:
     agente: "🎓 Claude Opus"
     modello: cloud-top
+    costo: alto
     descrizione: solo su richiesta esplicita dell'utente con il comando @opus
     comando: "@opus"
     solo_comando: true
@@ -66,13 +71,15 @@ categorie:
   documenti_lunghi:
     agente: "📚 Gemini"
     modello: cloud-documenti
-    descrizione: riassunti e analisi di documenti o testi molto lunghi
+    costo: basso
+    descrizione: riassunti e analisi di documenti o testi molto lunghi (decine di pagine)
     comando: "@gemini"
 
   immagine:
     agente: "🎨 ComfyUI (RunPod)"
     gestore: runpod
     workflow: immagine
+    costo: basso
     descrizione: creare o generare un'immagine, un logo, un'illustrazione
     comando: "@immagine"
     parole_chiave: ["genera un'immagine", "crea un'immagine", "disegna", "illustrazione", "crea un logo"]
@@ -88,6 +95,7 @@ categorie:
       guidance: 5
       seed: -1
       enable_safety_checker: true
+    costo: medio
     descrizione: creare o generare un video o un'animazione
     comando: "@video"
     parole_chiave: ["genera un video", "crea un video", "animazione", "clip video"]
@@ -101,6 +109,9 @@ istruzioni_sistema: |
   Nella conversazione possono esserci risposte di altri agenti della piattaforma
   (riconoscibili dalla riga "Capo → …"), comprese immagini generate da ComfyUI:
   sono reali, usale come contesto e non scusarti per esse.
+
+# Il Capo preferisce sempre gli agenti gratuiti: sceglie quelli a pagamento solo quando servono davvero
+preferisci_gratis: true
 
 # Categoria usata se la classificazione non è chiara
 predefinita: chat

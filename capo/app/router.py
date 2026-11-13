@@ -126,10 +126,19 @@ class Router:
 
     async def _classifica(self, testo: str) -> tuple[str, bool]:
         scelte = {n: c for n, c in self.categorie.items() if not c.get("solo_comando")}
-        elenco = "\n".join(f"- {n}: {c['descrizione']}" for n, c in scelte.items())
+        elenco = "\n".join(
+            f"- {n} [{c.get('costo', 'gratis')}]: {c['descrizione']}" for n, c in scelte.items()
+        )
+        regola = (
+            "REGOLA: scegli SEMPRE una categoria [gratis] se può rispondere in modo accettabile. "
+            "Scegli una categoria a pagamento solo quando quella gratuita farebbe chiaramente un lavoro scadente. "
+            "Nel dubbio, scegli la gratuita.\n\n"
+            if self.regole.get("preferisci_gratis", True) else ""
+        )
         prompt = (
             "Sei il Capo di un sistema di agenti AI. Classifica la richiesta.\n"
-            f"Categorie:\n{elenco}\n\n"
+            f"Categorie (tra parentesi il costo):\n{elenco}\n\n"
+            f"{regola}"
             "Rispondi con DUE righe, nient'altro:\n"
             "categoria: <nome esatto della categoria>\n"
             "web: <si se servono informazioni aggiornate da internet (notizie, prezzi, risultati, eventi "
