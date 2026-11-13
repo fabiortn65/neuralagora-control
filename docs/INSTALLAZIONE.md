@@ -26,7 +26,7 @@ cp .env.example .env
 ```
 
 Apri `.env` e compila:
-- `LITELLM_MASTER_KEY` e `WEBUI_SECRET_KEY`: inventa due stringhe lunghe
+- `LITELLM_MASTER_KEY`, `WEBUI_SECRET_KEY` e `LITELLM_DB_PASSWORD`: inventa tre stringhe lunghe
 - `ANTHROPIC_API_KEY` e `GEMINI_API_KEY`: se le hai
 - le variabili `RUNPOD_*`: se usi immagini e video (vedi [`runpod/README.md`](../runpod/README.md))
 
@@ -62,12 +62,17 @@ Esempio: `@claude rivedi l'architettura di questa app`
 
 ## 6. Controlla la spesa
 
-La protezione vera sono i limiti impostati direttamente dai fornitori:
+**Claude e Gemini** passano da LiteLLM, che registra la spesa in un piccolo database:
 
-- **Claude:** console.anthropic.com → Billing e Limits (credito prepagato, ricarica automatica spenta)
-- **Gemini:** aistudio.google.com → uso e fatturazione del progetto
+- apri **http://localhost:4000/ui**
+- utente: `admin`, password: il valore di `LITELLM_MASTER_KEY` nel file `.env`
+- nella sezione della spesa (Usage / Spend) vedi quanto ha speso ogni modello
 
-Il `max_budget` in `litellm/config.yaml` è una seconda barriera, ma senza un database si azzera a ogni riavvio di LiteLLM.
+Il tetto `max_budget` in `litellm/config.yaml` (20 $ ogni 30 giorni) viene applicato: superato, le chiamate ai modelli a pagamento vengono bloccate.
+
+**RunPod** (immagini e video) non passa da LiteLLM: la spesa si vede nel saldo e in Billing su runpod.io. Il costo di ogni video compare anche in chat.
+
+Per sicurezza tieni comunque attivi i limiti sulle console dei fornitori (console.anthropic.com, aistudio.google.com).
 
 ## Problemi comuni
 
