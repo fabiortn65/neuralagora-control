@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 import time
 import uuid
@@ -18,6 +19,7 @@ LITELLM_URL = os.getenv("LITELLM_URL", "http://localhost:4000")
 LITELLM_KEY = os.getenv("LITELLM_MASTER_KEY", "")
 URL_PUBBLICO = os.getenv("CAPO_PUBLIC_URL", "http://localhost:8100").rstrip("/")
 NOME_MODELLO = "capo"
+log = logging.getLogger("uvicorn.error")
 HEADERS = {"Authorization": f"Bearer {LITELLM_KEY}"} if LITELLM_KEY else {}
 
 router = Router(os.getenv("RULES_PATH", "/app/rules.yaml"), LITELLM_URL, LITELLM_KEY)
@@ -165,17 +167,26 @@ async def _prompt_visivo(richiesta: str) -> str:
                 json={
                     "model": "locale-chat",
                     "temperature": 0.4,
+                    "max_tokens": 400,
                     "messages": [{"role": "user", "content":
                         "Rewrite this request as one detailed English prompt for an image/video "
                         "generation model. Reply with the prompt only. /no_think\n\n" + richiesta}],
                 },
             )
-            r.raise_for_status()
-            testo = r.json()["choices"][0]["message"]["content"] or ""
+            if r.status_code != 200:
+                log.warning("Prompt visivo: LiteLLM ha risposto %s: %s", r.status_code, r.text[:300])
+                return richiesta
+            testo = r.json()["choices"][0]["message"].get("content") or ""
             if "</think>" in testo:
                 testo = testo.split("</think>")[-1]
-            return testo.strip() or richiesta
-    except Exception:
+            testo = testo.strip().strip('"')
+            if not testo:
+                log.warning("Prompt visivo: risposta vuota dal modello locale")
+                return richiesta
+            log.info("Prompt visivo: %s", testo[:200])
+            return testo
+    except Exception as e:
+        log.warning("Prompt visivo non riuscito: %r", e)
         return richiesta
 
 
