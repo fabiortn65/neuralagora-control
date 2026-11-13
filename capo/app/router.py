@@ -125,7 +125,8 @@ class Router:
         return d
 
     async def _classifica(self, testo: str) -> tuple[str, bool]:
-        elenco = "\n".join(f"- {n}: {c['descrizione']}" for n, c in self.categorie.items())
+        scelte = {n: c for n, c in self.categorie.items() if not c.get("solo_comando")}
+        elenco = "\n".join(f"- {n}: {c['descrizione']}" for n, c in scelte.items())
         prompt = (
             "Sei il Capo di un sistema di agenti AI. Classifica la richiesta.\n"
             f"Categorie:\n{elenco}\n\n"
@@ -152,7 +153,7 @@ class Router:
         risposta = risposta.lower()
         web = bool(re.search(r"web\s*:\s*s[iì]", risposta))
         riga_cat = risposta.split("web")[0]
-        for nome in sorted(self.categorie, key=len, reverse=True):
+        for nome in sorted(scelte, key=len, reverse=True):
             if nome in riga_cat:
                 log.info("Classificazione: %s, web=%s", nome, web)
                 return nome, web

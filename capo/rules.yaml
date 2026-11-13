@@ -43,12 +43,25 @@ categorie:
     comando: "@coder"
     parole_chiave: [regex, "query sql", "una funzione", "script veloce"]
 
+  ragionamento:
+    agente: "⚡ Claude Haiku"
+    modello: cloud-veloce
+    descrizione: richieste che il modello locale non fa bene ma non complesse - spiegazioni dettagliate, testi ed email curati, riassunti, traduzioni accurate, revisione di testi, codice di media difficoltà
+    comando: "@haiku"
+
   codice_complesso:
     agente: "🧠 Claude"
     modello: cloud-codice
-    descrizione: app o siti interi, architettura, refactoring multi-file, debug difficile
+    descrizione: compiti difficili - app o siti interi, architettura, refactoring multi-file, debug difficile, analisi e ragionamenti complessi
     comando: "@claude"
     parole_chiave: [architettura, refactoring, "intera app", "progetta", debug]
+
+  massimo:
+    agente: "🎓 Claude Opus"
+    modello: cloud-top
+    descrizione: solo su richiesta esplicita dell'utente con il comando @opus
+    comando: "@opus"
+    solo_comando: true
 
   documenti_lunghi:
     agente: "📚 Gemini"

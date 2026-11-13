@@ -53,7 +53,9 @@ La prima volta scarica le immagini e richiede qualche minuto.
 |---|---|
 | `@locale` | chat locale |
 | `@coder` | coder locale |
-| `@claude` | Claude |
+| `@haiku` | Claude Haiku (economico) |
+| `@claude` | Claude Sonnet |
+| `@opus` | Claude Opus (il più potente, solo a comando) |
 | `@gemini` | Gemini |
 | `@web` | Gemini con ricerca Google (anche automatico se scrivi un link) |
 | `@immagine` | generazione immagine |

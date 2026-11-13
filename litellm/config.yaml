@@ -19,9 +19,19 @@ model_list:
       api_base: os.environ/OLLAMA_BASE_URL
 
   # --- Cloud a consumo ---
-  - model_name: cloud-codice
+  - model_name: cloud-veloce          # Claude Haiku: economico e veloce
+    litellm_params:
+      model: anthropic/claude-haiku-5-5
+      api_key: os.environ/ANTHROPIC_API_KEY
+
+  - model_name: cloud-codice          # Claude Sonnet: equilibrato
     litellm_params:
       model: anthropic/claude-sonnet-5-5
+      api_key: os.environ/ANTHROPIC_API_KEY
+
+  - model_name: cloud-top             # Claude Opus: il più potente, solo a comando (@opus)
+    litellm_params:
+      model: anthropic/claude-opus-5-5
       api_key: os.environ/ANTHROPIC_API_KEY
 
   - model_name: cloud-documenti
@@ -32,7 +42,9 @@ model_list:
 router_settings:
   # Se un modello cloud non risponde o manca la chiave, si ripiega sul locale
   fallbacks:
-    - cloud-codice: ["locale-coder"]
+    - cloud-veloce: ["locale-chat"]
+    - cloud-codice: ["cloud-veloce", "locale-coder"]
+    - cloud-top: ["cloud-codice"]
     - cloud-documenti: ["locale-chat"]
 
 litellm_settings:

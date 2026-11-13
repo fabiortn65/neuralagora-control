@@ -70,3 +70,15 @@ def test_immagini_senza_web():
 def test_domanda_normale_senza_web():
     d = decidi("ciao, come stai?")
     assert not d.serve_web
+
+
+def test_livelli_claude():
+    assert decidi("@haiku scrivimi una mail di ringraziamento").modello == "cloud-veloce"
+    assert decidi("@claude progetta il backend").modello == "cloud-codice"
+    assert decidi("@opus analizza questa strategia").modello == "cloud-top"
+
+
+def test_opus_mai_dal_classificatore():
+    import asyncio
+    elenco = [n for n, c in router.categorie.items() if not c.get("solo_comando")]
+    assert "massimo" not in elenco
