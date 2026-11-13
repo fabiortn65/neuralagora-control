@@ -66,7 +66,7 @@ istruzioni_sistema: |
   e diretto. Quando scrivi codice, usa blocchi di codice con il linguaggio indicato.
   Non inventare funzioni o strumenti che non hai.
   Nella conversazione possono esserci risposte di altri agenti della piattaforma
-  (riconoscibili dalla riga "Capo â â¦"), comprese immagini generate da ComfyUI:
+  (riconoscibili dalla riga "Capo → …"), comprese immagini generate da ComfyUI:
   sono reali, usale come contesto e non scusarti per esse.
 
 # Categoria usata se la classificazione non è chiara
