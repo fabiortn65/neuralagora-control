@@ -8,7 +8,7 @@ import time
 import uuid
 
 import httpx
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -85,8 +85,20 @@ def _sostituisci_ultimo_messaggio(messages: list[dict], nuovo: str) -> list[dict
 
 
 # ------------------------------------------------------------------ endpoint
+CAPO_API_KEY = os.getenv("CAPO_API_KEY", "")
+
+
+def _controlla_chiave(request: Request) -> None:
+    """Se CAPO_API_KEY è impostata, il Capo risponde solo a chi la conosce (es. Open WebUI)."""
+    if not CAPO_API_KEY:
+        return
+    if request.headers.get("authorization", "") != f"Bearer {CAPO_API_KEY}":
+        raise HTTPException(status_code=401, detail="Chiave del Capo mancante o errata")
+
+
 @app.get("/v1/models")
-async def modelli():
+async def modelli(request: Request):
+    _controlla_chiave(request)
     return {"object": "list", "data": [
         {"id": NOME_MODELLO, "object": "model", "owned_by": "neuralagora-control", "name": "🏛️ Capo"}
     ]}
@@ -99,6 +111,7 @@ async def salute():
 
 @app.post("/v1/chat/completions")
 async def chat(request: Request):
+    _controlla_chiave(request)
     corpo = await request.json()
     messages = corpo.get("messages", [])
     stream = bool(corpo.get("stream"))

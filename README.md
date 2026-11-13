@@ -69,7 +69,8 @@ capo/            Il Capo: router compatibile OpenAI (FastAPI)
   rules.yaml     Regole di smistamento (modificabili)
 litellm/         Configurazione del gateway: modelli, alias, budget
 runpod/          Client e workflow ComfyUI per immagini e video
-docs/            Guide in italiano
+docs/            Guide in italiano (installazione, GitHub, uso da fuori casa)
+scripts/         Backup
 ```
 
 ## Roadmap

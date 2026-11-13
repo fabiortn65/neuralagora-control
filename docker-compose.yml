@@ -11,7 +11,7 @@ services:
     volumes:
       - ./litellm/config.yaml:/app/config.yaml:ro
     ports:
-      - "4000:4000"
+      - "127.0.0.1:4000:4000"   # pannello LiteLLM raggiungibile solo da questo PC
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:
@@ -56,7 +56,7 @@ services:
     image: ghcr.io/open-webui/open-webui:main
     environment:
       OPENAI_API_BASE_URLS: http://capo:8100/v1;http://litellm:4000/v1
-      OPENAI_API_KEYS: capo;${LITELLM_MASTER_KEY}
+      OPENAI_API_KEYS: ${CAPO_API_KEY:-capo};${LITELLM_MASTER_KEY}
       ENABLE_OLLAMA_API: "false"
       WEBUI_SECRET_KEY: ${WEBUI_SECRET_KEY}
       WEBUI_NAME: Neural Agorà Control
