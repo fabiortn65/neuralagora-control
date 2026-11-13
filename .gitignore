@@ -1,0 +1,32 @@
+# Segreti: MAI su GitHub
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+secrets/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+
+# Dati locali e output generati
+data/
+output/
+*.log
+*.sqlite
+*.db
+
+# Configurazioni personali (vanno nel repo privato)
+private/
+config.local.yaml
+rules.local.yaml
+
+# Editor e sistema
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

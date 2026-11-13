@@ -1,0 +1,68 @@
+# ============================================================
+#  Regole del Capo
+#  Ordine delle decisioni:
+#   1. comando forzato all'inizio del messaggio (es. "@claude ...")
+#   2. testo molto lungo  -> documenti_lunghi
+#   3. parole chiave      -> categoria corrispondente
+#   4. altrimenti il modello locale classifica la richiesta
+# ============================================================
+
+# Modello (alias LiteLLM) usato dal Capo per classificare: deve essere locale e gratuito
+classificatore: locale-chat
+
+# Oltre questo numero di caratteri la conversazione va al modello per documenti lunghi
+soglia_testo_lungo: 30000
+
+categorie:
+  chat:
+    agente: "💬 Locale"
+    modello: locale-chat
+    descrizione: conversazione, domande generiche, spiegazioni brevi, traduzioni
+    comando: "@locale"
+
+  codice_semplice:
+    agente: "🧑‍💻 Coder locale"
+    modello: locale-coder
+    descrizione: piccoli script, una funzione, correzioni rapide, HTML/CSS semplice
+    comando: "@coder"
+    parole_chiave: [regex, "query sql", "una funzione", "script veloce"]
+
+  codice_complesso:
+    agente: "🧠 Claude"
+    modello: cloud-codice
+    descrizione: app o siti interi, architettura, refactoring multi-file, debug difficile
+    comando: "@claude"
+    parole_chiave: [architettura, refactoring, "intera app", "progetta", debug]
+
+  documenti_lunghi:
+    agente: "📚 Gemini"
+    modello: cloud-documenti
+    descrizione: riassunti e analisi di documenti o testi molto lunghi
+    comando: "@gemini"
+
+  immagine:
+    agente: "🎨 ComfyUI (RunPod)"
+    gestore: runpod
+    workflow: immagine
+    descrizione: creare o generare un'immagine, un logo, un'illustrazione
+    comando: "@immagine"
+    parole_chiave: ["genera un'immagine", "crea un'immagine", "disegna", "illustrazione", "crea un logo"]
+
+  video:
+    agente: "🎬 ComfyUI Video (RunPod)"
+    gestore: runpod
+    workflow: video
+    descrizione: creare o generare un video o un'animazione
+    comando: "@video"
+    parole_chiave: ["genera un video", "crea un video", "animazione", "clip video"]
+
+# Istruzioni date a ogni agente prima della conversazione
+istruzioni_sistema: |
+  Sei un assistente di Neural Agorà Control, una piattaforma in cui un'IA "Capo"
+  smista le richieste tra più agenti. Rispondi sempre in italiano, in modo chiaro
+  e diretto. Quando scrivi codice, usa blocchi di codice con il linguaggio indicato.
+  Non inventare funzioni o strumenti che non hai.
+  /no_think
+
+# Categoria usata se la classificazione non è chiara
+predefinita: chat

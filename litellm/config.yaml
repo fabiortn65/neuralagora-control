@@ -1,0 +1,45 @@
+# ============================================================
+#  LiteLLM - catalogo dei modelli
+#  Il Capo chiama sempre gli ALIAS qui sotto (es. "locale-chat"),
+#  quindi per cambiare modello basta modificare questo file.
+#  Controlla i nomi aggiornati dei modelli nella documentazione
+#  di Anthropic, Google e Ollama prima dell'uso.
+# ============================================================
+
+model_list:
+  # --- Locale (gratis) ---
+  - model_name: locale-chat
+    litellm_params:
+      model: ollama_chat/qwen3:4b
+      api_base: os.environ/OLLAMA_BASE_URL
+
+  - model_name: locale-coder
+    litellm_params:
+      model: ollama_chat/qwen2.5-coder:3b
+      api_base: os.environ/OLLAMA_BASE_URL
+
+  # --- Cloud a consumo ---
+  - model_name: cloud-codice
+    litellm_params:
+      model: anthropic/claude-sonnet-5-5
+      api_key: os.environ/ANTHROPIC_API_KEY
+
+  - model_name: cloud-documenti
+    litellm_params:
+      model: gemini/gemini-flash-latest
+      api_key: os.environ/GEMINI_API_KEY
+
+router_settings:
+  # Se un modello cloud non risponde o manca la chiave, si ripiega sul locale
+  fallbacks:
+    - cloud-codice: ["locale-coder"]
+    - cloud-documenti: ["locale-chat"]
+
+litellm_settings:
+  drop_params: true
+  # Budget massimo in dollari per i modelli a pagamento (i locali costano 0)
+  max_budget: 20
+  budget_duration: 30d
+
+general_settings:
+  master_key: os.environ/LITELLM_MASTER_KEY

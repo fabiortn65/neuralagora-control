@@ -1,0 +1,67 @@
+name: neuralagora-control
+
+services:
+  # Gateway unico verso tutti i modelli: alias, budget, log della spesa
+  litellm:
+    image: ghcr.io/berriai/litellm:main-stable
+    command: ["--config", "/app/config.yaml", "--port", "4000"]
+    env_file: .env
+    volumes:
+      - ./litellm/config.yaml:/app/config.yaml:ro
+    ports:
+      - "4000:4000"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+
+  # Il Capo: classifica la richiesta e la smista
+  capo:
+    build: ./capo
+    env_file: .env
+    environment:
+      LITELLM_URL: http://litellm:4000
+    volumes:
+      - ./capo/rules.yaml:/app/rules.yaml:ro
+      - ./runpod/workflows:/app/workflows:ro
+      - ./output:/app/output
+    ports:
+      - "8100:8100"
+    depends_on:
+      - litellm
+    restart: unless-stopped
+
+  # Interfaccia web
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:main
+    environment:
+      OPENAI_API_BASE_URLS: http://capo:8100/v1;http://litellm:4000/v1
+      OPENAI_API_KEYS: capo;${LITELLM_MASTER_KEY}
+      ENABLE_OLLAMA_API: "false"
+      WEBUI_SECRET_KEY: ${WEBUI_SECRET_KEY}
+      WEBUI_NAME: Neural Agorà Control
+    volumes:
+      - ./data/open-webui:/app/backend/data
+    ports:
+      - "3000:8080"
+    depends_on:
+      - capo
+    restart: unless-stopped
+
+  # Facoltativo: Ollama dentro Docker (Linux con GPU NVIDIA).
+  # Su Windows/Mac conviene installare Ollama normalmente.
+  # Avvio: docker compose --profile ollama up -d  e in .env OLLAMA_BASE_URL=http://ollama:11434
+  ollama:
+    image: ollama/ollama
+    profiles: ["ollama"]
+    volumes:
+      - ./data/ollama:/root/.ollama
+    ports:
+      - "11434:11434"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    restart: unless-stopped
