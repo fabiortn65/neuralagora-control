@@ -74,6 +74,11 @@ class Router:
             if cmd and minuscolo.startswith(cmd.lower()):
                 return self._decisione(nome, f"comando {cmd}", testo.strip()[len(cmd):].strip())
 
+        # 1b. Un link nel messaggio: serve l'agente che legge il web
+        categoria_link = self.regole.get("categoria_link")
+        if categoria_link in self.categorie and re.search(r"https?://\S+", testo):
+            return self._decisione(categoria_link, "link nel messaggio")
+
         # 2. Testo molto lungo
         if self.lunghezza_totale(messages) > self.regole.get("soglia_testo_lungo", 30000):
             return self._decisione("documenti_lunghi", "testo molto lungo")

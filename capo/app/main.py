@@ -12,7 +12,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
-from . import locale, runpod_client
+from . import locale, runpod_client, web
 from .router import Decisione, Router
 
 LITELLM_URL = os.getenv("LITELLM_URL", "http://localhost:4000")
@@ -126,6 +126,8 @@ async def chat(request: Request):
 
     if d.gestore in ("runpod", "runpod_pubblico"):
         return await _multimedia(corpo, d, stream)
+    if d.gestore == "gemini_web":
+        return await _web(_prepara(corpo), d, stream)
     return await _inoltra(corpo, d, stream)
 
 
@@ -176,6 +178,34 @@ async def _inoltra(corpo: dict, d: Decisione, stream: bool, intestazione: bool =
                         yield "data: [DONE]\n\n"
                         return
                     yield riga + "\n\n"
+
+    return StreamingResponse(generatore(), media_type="text/event-stream")
+
+
+# ------------------------------------------------------------------ web (Gemini + Google)
+async def _web(corpo: dict, d: Decisione, stream: bool):
+    async def lavora() -> str:
+        try:
+            risposta, fonti = await web.chiedi(corpo.get("messages", []), d.modello or "gemini-flash-latest")
+        except web.WebNonConfigurato as e:
+            return f"⚠️ {e}"
+        except Exception as e:
+            log.warning("Agente web non riuscito: %r", e)
+            return f"⚠️ Errore durante la ricerca sul web: {e}"
+        if not risposta:
+            return "⚠️ Nessuna risposta dalla ricerca sul web."
+        if fonti:
+            risposta += "\n\n**Fonti:**\n" + "\n".join(f"- [{t}]({u})" for t, u in fonti)
+        return risposta
+
+    if not stream:
+        return JSONResponse(_risposta_completa(_intestazione(d) + await lavora()))
+
+    async def generatore():
+        yield _chunk(_intestazione(d) + "🔎 Cerco sul web...\n\n")
+        yield _chunk(await lavora())
+        yield _chunk("", fine=True)
+        yield "data: [DONE]\n\n"
 
     return StreamingResponse(generatore(), media_type="text/event-stream")
 

@@ -37,6 +37,14 @@ categorie:
     comando: "@claude"
     parole_chiave: [architettura, refactoring, "intera app", "progetta", debug]
 
+  web:
+    agente: "🌐 Gemini + Google"
+    gestore: gemini_web
+    modello: gemini-flash-latest
+    descrizione: domande che richiedono informazioni aggiornate da internet (notizie, prezzi, risultati, eventi recenti) o la lettura di un sito o di un link
+    comando: "@web"
+    parole_chiave: ["cerca su internet", "cerca online", "cerca sul web", "su internet", "ultime notizie", "notizie di oggi", "leggi questo sito", "apri questo link"]
+
   documenti_lunghi:
     agente: "📚 Gemini"
     modello: cloud-documenti
@@ -75,6 +83,9 @@ istruzioni_sistema: |
   Nella conversazione possono esserci risposte di altri agenti della piattaforma
   (riconoscibili dalla riga "Capo → …"), comprese immagini generate da ComfyUI:
   sono reali, usale come contesto e non scusarti per esse.
+
+# Se il messaggio contiene un link (http/https), va a questa categoria
+categoria_link: web
 
 # Categoria usata se la classificazione non è chiara
 predefinita: chat

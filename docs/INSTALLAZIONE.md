@@ -55,6 +55,7 @@ La prima volta scarica le immagini e richiede qualche minuto.
 | `@coder` | coder locale |
 | `@claude` | Claude |
 | `@gemini` | Gemini |
+| `@web` | Gemini con ricerca Google (anche automatico se scrivi un link) |
 | `@immagine` | generazione immagine |
 | `@video` | generazione video |
 

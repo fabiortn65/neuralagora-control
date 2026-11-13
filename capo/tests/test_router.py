@@ -41,3 +41,15 @@ def test_formato_multimodale():
     messages = [{"role": "user", "content": [{"type": "text", "text": "@gemini riassumi"}]}]
     d = asyncio.run(router.decidi(messages))
     assert d.categoria == "documenti_lunghi"
+
+
+def test_link_va_al_web():
+    d = decidi("https://github.com/latent-spaces/brag cosa fa?")
+    assert d.categoria == "web"
+    assert d.gestore == "gemini_web"
+
+
+def test_comando_web():
+    d = decidi("@web risultati di oggi")
+    assert d.categoria == "web"
+    assert d.testo_pulito == "risultati di oggi"

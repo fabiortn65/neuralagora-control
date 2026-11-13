@@ -32,6 +32,7 @@
 | Chat, domande semplici | 💬 Locale (Ollama) | 0 € |
 | Codice semplice | 🧑‍💻 Coder locale (Ollama) | 0 € |
 | Codice complesso, architettura, debug | 🧠 Claude | API a consumo |
+| Ricerca su internet, notizie, link da leggere | 🌐 Gemini + Google | API a consumo |
 | Documenti molto lunghi, sintesi | 📚 Gemini Flash | API a consumo (basso) |
 | Immagini | 🎨 ComfyUI su RunPod | solo i secondi di GPU |
 | Video | 🎬 ComfyUI su RunPod | solo i secondi di GPU |
