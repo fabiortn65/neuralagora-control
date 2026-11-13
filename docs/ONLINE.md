@@ -46,10 +46,19 @@ In Open WebUI: **Pannello di amministrazione → Impostazioni → Generale → A
 ## 6. Backup
 
 ```powershell
-.\scripts\backup.ps1 -Destinazione "E:\Backup\neuralagora"
+powershell -ExecutionPolicy Bypass -File .\scripts\backup.ps1 -Destinazione "G:\Backup\neuralagora"
 ```
-Ferma i servizi per qualche secondo, crea uno zip con chat, spesa, immagini/video, regole private e `.env`, poi riavvia. Tiene gli ultimi 8 backup.
+Ferma i servizi per qualche secondo, crea un archivio `.tar.gz` con chat, spesa, immagini/video, regole private e `.env`, poi riavvia. Tiene gli ultimi 8 backup.
+
+Il backup si fa dentro Docker (con un piccolo container `alpine`), perché Windows da solo non riesce a leggere alcuni file creati dai container. La cache di Open WebUI è esclusa: si riscarica da sola.
 
 Il backup contiene le tue chiavi: salvalo su un disco tuo, non in una cartella condivisa.
 
-Se PowerShell blocca lo script: `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` (una volta sola).
+### Ripristino
+
+1. `docker compose down`
+2. Estrai l'archivio nella cartella del progetto (sovrascrive `data`, `output`, `private`, `.env`):
+   ```powershell
+   tar -xzf "G:\Backup\neuralagora\neuralagora_AAAA-MM-GG_HHMM.tar.gz" -C .
+   ```
+3. `docker compose up -d`
