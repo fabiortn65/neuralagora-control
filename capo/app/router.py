@@ -21,6 +21,8 @@ class Decisione:
     gestore: str | None   # es. "runpod"
     workflow: str | None
     motivo: str
+    endpoint: str | None = None
+    parametri: dict | None = None
     testo_pulito: str | None = None  # messaggio senza il comando forzato
 
 
@@ -43,6 +45,8 @@ class Router:
             workflow=c.get("workflow"),
             motivo=motivo,
             testo_pulito=testo_pulito,
+            endpoint=c.get("endpoint"),
+            parametri=c.get("parametri"),
         )
 
     @staticmethod

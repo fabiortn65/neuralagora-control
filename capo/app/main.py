@@ -111,7 +111,7 @@ async def chat(request: Request):
     if d.testo_pulito is not None:
         corpo["messages"] = _sostituisci_ultimo_messaggio(messages, d.testo_pulito)
 
-    if d.gestore == "runpod":
+    if d.gestore in ("runpod", "runpod_pubblico"):
         return await _multimedia(corpo, d, stream)
     return await _inoltra(corpo, d, stream)
 
@@ -200,8 +200,12 @@ async def _multimedia(corpo: dict, d: Decisione, stream: bool):
 
     async def lavora() -> str:
         prompt = await _prompt_visivo(richiesta)
+        costo = None
         try:
-            files = await runpod_client.esegui(d.workflow, prompt)
+            if d.gestore == "runpod_pubblico":
+                files, costo = await runpod_client.esegui_pubblico(d.endpoint, prompt, d.parametri)
+            else:
+                files = await runpod_client.esegui(d.workflow, prompt)
         except runpod_client.RunPodNonConfigurato as e:
             return f"⚠️ {e}\n\nPrompt preparato dal Capo:\n\n```\n{prompt}\n```"
         except Exception as e:
@@ -209,7 +213,12 @@ async def _multimedia(corpo: dict, d: Decisione, stream: bool):
         righe = [f"**Prompt usato:** {prompt}\n"]
         for f in files:
             link = f if f.startswith("http") else f"{URL_PUBBLICO}/output/{f}"
-            righe.append(f"![risultato]({link})" if d.workflow == "immagine" else f"[▶️ Apri il video]({link})")
+            if f.lower().split("?")[0].endswith((".mp4", ".webm", ".mov")):
+                righe.append(f"[▶️ Apri il video]({link})")
+            else:
+                righe.append(f"![risultato]({link})")
+        if costo is not None:
+            righe.append(f"\n*Costo: {costo:.2f} $*")
         return "\n".join(righe)
 
     if not stream:

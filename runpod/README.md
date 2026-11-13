@@ -19,6 +19,14 @@ Il Capo sostituisce questi segnaposto prima di inviare il lavoro.
 
 `immagine-flux-schnell.json` funziona con l'immagine `runpod/worker-comfyui:5.8.5-flux1-schnell`: 4 passaggi, veloce ed economico. Per usarlo al posto di SDXL rinominalo in `immagine.json` (o mettilo come `immagine.json` nella tua cartella privata).
 
-## Video
+## Video (endpoint pubblico Wan 2.2)
 
-`video.json` non è incluso: i workflow video cambiano molto in base al modello scelto (Wan, LTX, CogVideoX…). Quando hai il tuo workflow, esportalo in formato API, aggiungi i segnaposto e crea un secondo endpoint con `RUNPOD_VIDEO_ENDPOINT_ID`.
+Per i video il Capo usa un **endpoint pubblico** di RunPod: nessun endpoint da creare, basta `RUNPOD_API_KEY`.
+Si paga per video generato (Wan 2.2 T2V 720p: circa 0,30 $ per 5 secondi); i tentativi falliti non si pagano.
+
+I link restituiti da RunPod scadono dopo 7 giorni: il Capo scarica ogni video nella cartella `output/`.
+
+Durata, risoluzione e altri parametri si cambiano in `capo/rules.yaml`, categoria `video`, voce `parametri`.
+
+Se preferisci un tuo workflow ComfyUI per i video, puoi tornare a `gestore: runpod` con `workflow: video`
+e un secondo endpoint (`RUNPOD_VIDEO_ENDPOINT_ID`).

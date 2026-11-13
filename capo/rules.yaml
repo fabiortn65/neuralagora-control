@@ -52,9 +52,16 @@ categorie:
     parole_chiave: ["genera un'immagine", "crea un'immagine", "disegna", "illustrazione", "crea un logo"]
 
   video:
-    agente: "🎬 ComfyUI Video (RunPod)"
-    gestore: runpod
-    workflow: video
+    agente: "🎬 Wan 2.2 (RunPod)"
+    gestore: runpod_pubblico
+    endpoint: wan-2-2-t2v-720
+    parametri:
+      size: "1280*720"
+      duration: 5
+      num_inference_steps: 30
+      guidance: 5
+      seed: -1
+      enable_safety_checker: true
     descrizione: creare o generare un video o un'animazione
     comando: "@video"
     parole_chiave: ["genera un video", "crea un video", "animazione", "clip video"]
