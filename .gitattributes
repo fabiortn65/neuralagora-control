@@ -1,0 +1,6 @@
+# Stessi ritorni a capo su Windows e Linux: evita file "modificati" senza modifiche
+* text=auto eol=lf
+*.ps1 text eol=crlf
+*.png binary
+*.jpg binary
+*.mp4 binary
