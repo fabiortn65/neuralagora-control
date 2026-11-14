@@ -30,3 +30,17 @@ Durata, risoluzione e altri parametri si cambiano in `capo/rules.yaml`, categori
 
 Se preferisci un tuo workflow ComfyUI per i video, puoi tornare a `gestore: runpod` con `workflow: video`
 e un secondo endpoint (`RUNPOD_VIDEO_ENDPOINT_ID`).
+
+## Modificare e animare una foto
+
+Il Capo usa due endpoint pubblici di RunPod con la stessa `RUNPOD_API_KEY`:
+
+| Cosa scrivi | Endpoint | Costo indicativo |
+|---|---|---|
+| foto allegata + "modifica questa foto: …" (o `@modifica`) | `qwen-image-edit-2511` | 0,02 $ a foto |
+| foto allegata + "anima questa foto: …" (o `@anima`) | `wan-2-2-i2v-720` | 0,30 $ per 5 s |
+
+- "animala: …" subito dopo una modifica anima la foto appena modificata.
+- Se RunPod non accetta la foto allegata, caricala su Google Drive, condividila come
+  «Chiunque abbia il link» e incolla il link nel messaggio.
+- Il Capo sceglie da solo il formato verticale od orizzontale guardando la foto.

@@ -83,17 +83,21 @@ def _salva_output(output: dict) -> list[str]:
 
 
 async def esegui_pubblico(endpoint: str, prompt: str, parametri: dict | None = None,
-                          timeout_s: int = 900) -> tuple[list[str], float | None]:
+                          timeout_s: int = 900, immagine: str | None = None,
+                          campo_immagine: str | None = None) -> tuple[list[str], float | None, str]:
     """Chiama un endpoint pubblico di RunPod (es. wan-2-2-t2v-720) e scarica il risultato.
 
     I link degli endpoint pubblici scadono dopo 7 giorni: il file viene salvato in output/.
-    Restituisce (lista di file salvati, costo in USD se indicato).
+    Se c'è una foto di partenza, va nel campo indicato (`image`, oppure `images` come lista).
+    Restituisce (lista di file salvati, costo in USD se indicato, link originale di RunPod).
     """
     chiave = os.getenv("RUNPOD_API_KEY")
     if not chiave:
         raise RunPodNonConfigurato("RunPod non è configurato: imposta RUNPOD_API_KEY nel file .env.")
     headers = {"Authorization": f"Bearer {chiave}"}
     corpo = {"input": {"prompt": prompt, **(parametri or {})}}
+    if immagine and campo_immagine:
+        corpo["input"][campo_immagine] = [immagine] if campo_immagine == "images" else immagine
 
     async with httpx.AsyncClient(timeout=300) as client:
         r = await client.post(f"{RUNPOD_API}/{endpoint}/runsync", headers=headers, json=corpo)
@@ -129,6 +133,6 @@ async def esegui_pubblico(endpoint: str, prompt: str, parametri: dict | None = N
             scarico = await client.get(url, timeout=300)
             scarico.raise_for_status()
             (CARTELLA_OUTPUT / nome).write_bytes(scarico.content)
-            return [nome], costo
+            return [nome], costo, url
         except Exception:
-            return [url], costo  # se il download fallisce, resta il link (valido 7 giorni)
+            return [url], costo, url  # se il download fallisce, resta il link (valido 7 giorni)

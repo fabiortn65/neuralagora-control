@@ -93,6 +93,47 @@ categorie:
     descrizione: riassunti e analisi di documenti o testi molto lunghi (decine di pagine)
     comando: "@gemini"
 
+  # --- Lavori su una foto: si attivano solo se nella chat c'è una foto
+  #     (allegata, link di Google Drive condiviso "chiunque abbia il link", o prodotta dal Capo)
+  modifica_foto:
+    agente: "🖌️ Qwen Image Edit (RunPod)"
+    gestore: runpod_pubblico
+    endpoint: qwen-image-edit-2511
+    tipo: immagine
+    richiede_immagine: true
+    campo_immagine: images     # l'endpoint vuole una lista di immagini
+    tipo_prompt: modifica
+    parametri:
+      size: auto               # il Capo sceglie verticale/orizzontale/quadrato dalla foto
+      output_format: png
+      seed: -1
+    costo: basso
+    descrizione: modificare una foto allegata - cambiare abiti, sfondo, ambiente, luce, mantenendo la persona
+    comando: "@modifica"
+    parole_chiave: ["modifica questa foto", "modifica la foto", "modifica l'immagine", "modificala",
+                    "cambia l'abito", "cambia lo sfondo", "cambia sfondo", "trasforma questa foto",
+                    "trasforma la foto", "mettile", "vestila"]
+
+  anima_foto:
+    agente: "🎞️ Wan 2.2 da foto (RunPod)"
+    gestore: runpod_pubblico
+    endpoint: wan-2-2-i2v-720
+    richiede_immagine: true
+    campo_immagine: image
+    tipo_prompt: movimento
+    parametri:
+      size: auto
+      duration: 5              # 5 s = 0,30 $; 8 s = 0,48 $
+      num_inference_steps: 30
+      guidance: 5
+      seed: -1
+      enable_safety_checker: true
+    costo: medio
+    descrizione: trasformare in video una foto allegata o appena creata, facendo muovere la persona o la scena
+    comando: "@anima"
+    parole_chiave: ["anima questa foto", "anima la foto", "anima l'immagine", "animala", "animalo",
+                    "fai muovere", "trasforma in video", "rendila un video"]
+
   immagine:
     agente: "🎨 ComfyUI (RunPod)"
     gestore: runpod

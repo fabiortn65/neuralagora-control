@@ -28,6 +28,9 @@ class Decisione:
     max_contesto_web: int = 12000
     testo_pulito: str | None = None  # messaggio senza il comando forzato
     domanda_web: str | None = None   # testo da usare per la ricerca web (se diverso dall'ultimo messaggio)
+    immagine: str | None = None      # foto da modificare o animare (data URI, link o file in output/)
+    campo_immagine: str | None = None
+    tipo_prompt: str | None = None   # come preparare il prompt: modifica / movimento
 
 
 class Router:
@@ -51,6 +54,8 @@ class Router:
             testo_pulito=testo_pulito,
             endpoint=c.get("endpoint"),
             parametri=c.get("parametri"),
+            campo_immagine=c.get("campo_immagine"),
+            tipo_prompt=c.get("tipo_prompt"),
             max_contesto_web=int(c.get("max_contesto_web", self.regole.get("ricerca_web", {}).get("max_caratteri", 12000))),
         )
 
@@ -100,14 +105,57 @@ class Router:
         minuscolo = testo.lower()
         return any(p.lower() in minuscolo for p in cfg.get("parole_chiave", []) or [])
 
+    @classmethod
+    def lunghezza_totale(cls, messages: list[dict]) -> int:
+        """Conta solo il testo: le immagini allegate (in base64) non sono testo lungo."""
+        return sum(len(cls._testo(m)) for m in messages)
+
     @staticmethod
-    def lunghezza_totale(messages: list[dict]) -> int:
-        return sum(len(str(m.get("content", ""))) for m in messages)
+    def _link_drive(url: str) -> str:
+        """Trasforma un link di condivisione di Google Drive in un link di download diretto."""
+        m = re.search(r"drive\.google\.com/(?:file/d/|open\?id=|uc\?(?:export=\w+&)?id=)([\w-]{10,})", url)
+        return f"https://drive.google.com/uc?export=download&id={m.group(1)}" if m else url
+
+    @classmethod
+    def trova_immagine(cls, messages: list[dict]) -> str | None:
+        """L'immagine più recente della conversazione: allegata, link Google Drive o di un'immagine,
+        oppure l'ultima prodotta dal Capo."""
+        for m in reversed(messages):
+            contenuto = m.get("content", "")
+            if m.get("role") == "user":
+                if isinstance(contenuto, list):
+                    for parte in reversed(contenuto):
+                        if parte.get("type") == "image_url":
+                            url = parte.get("image_url")
+                            url = url.get("url") if isinstance(url, dict) else url
+                            if url:
+                                return url
+                testo = cls._testo(m)
+                drive = re.search(r"https?://drive\.google\.com/\S+", testo)
+                if drive:
+                    return cls._link_drive(drive.group(0))
+                link = re.search(r"https?://\S+?\.(?:png|jpe?g|webp)(?:\?\S*)?(?=\s|$)", testo, re.I)
+                if link:
+                    return link.group(0)
+            elif m.get("role") == "assistant":
+                testo = cls._testo(m)
+                marcatore = re.findall(r"\[🔗 Originale su RunPod[^\]]*\]\((\S+?)\)", testo)
+                if marcatore:
+                    return marcatore[-1]
+                locale_img = re.findall(r"!\[[^\]]*\]\((\S+?/output/[^)\s]+\.(?:png|jpe?g|webp))\)", testo, re.I)
+                if locale_img:
+                    return locale_img[-1]
+        return None
+
+    def _categorie_immagine(self, con_immagine: bool) -> dict:
+        return {n: c for n, c in self.categorie.items() if con_immagine or not c.get("richiede_immagine")}
 
     # ---------------------------------------------------------------
     async def decidi(self, messages: list[dict]) -> Decisione:
         testo = self.ultimo_messaggio(messages)
         d = await self._scegli_agente(messages, testo)
+        if self.categorie.get(d.categoria, {}).get("richiede_immagine"):
+            d.immagine = self.trova_immagine(messages)
         if not self.regole.get("ricerca_web", {}).get("attiva", True) or d.gestore in ("runpod", "runpod_pubblico"):
             return d
         if not d.serve_web and d.domanda_web is None:
@@ -162,21 +210,22 @@ class Router:
                 d.domanda_web = domanda
             return d
 
-        # 4. Parole chiave
-        for nome, c in self.categorie.items():
+        # 4. Parole chiave (le categorie che lavorano su una foto solo se c'è una foto)
+        c_immagine = self.trova_immagine(messages) is not None
+        for nome, c in self._categorie_immagine(c_immagine).items():
             for parola in c.get("parole_chiave", []) or []:
                 if parola.lower() in minuscolo:
                     return self._decisione(nome, f"parola chiave «{parola}»")
 
         # 5. Classificazione con il modello locale (sceglie l'agente e se serve internet)
-        categoria, web = await self._classifica(testo)
+        categoria, web = await self._classifica(testo, c_immagine)
         d = self._decisione(categoria, "valutazione del Capo")
         if web:
             d.serve_web, d.motivo_web = True, "valutazione del Capo"
         return d
 
-    async def _classifica(self, testo: str) -> tuple[str, bool]:
-        scelte = {n: c for n, c in self.categorie.items() if not c.get("solo_comando")}
+    async def _classifica(self, testo: str, con_immagine: bool = False) -> tuple[str, bool]:
+        scelte = {n: c for n, c in self._categorie_immagine(con_immagine).items() if not c.get("solo_comando")}
         elenco = "\n".join(
             f"- {n} [{c.get('costo', 'gratis')}]: {c['descrizione']}" for n, c in scelte.items()
         )

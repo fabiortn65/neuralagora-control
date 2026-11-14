@@ -1,9 +1,12 @@
 """Il Capo: API compatibile OpenAI che smista ogni richiesta all'agente giusto."""
 from __future__ import annotations
 
+import base64
 import json
 import logging
+import mimetypes
 import os
+import struct
 import time
 import uuid
 
@@ -258,12 +261,24 @@ async def _web(corpo: dict, d: Decisione, stream: bool):
 
 
 # ------------------------------------------------------------------ immagini e video
-async def _prompt_visivo(richiesta: str) -> str:
+ISTRUZIONI_PROMPT = {
+    None: "Rewrite this request as one detailed English prompt for an image/video "
+          "generation model. Reply with the prompt only, no quotes, no explanations.",
+    "modifica": "Rewrite this request as one clear English instruction for an image-editing model that "
+                "edits the attached photo. Always say to keep the same person, same face and identity. "
+                "Describe only what to change (clothes, background, setting, light, pose). "
+                "Reply with the instruction only, no quotes, no explanations.",
+    "movimento": "Rewrite this request as one English prompt for an image-to-video model that animates "
+                 "the attached photo. Describe the motion of the subject and of the camera, keeping the "
+                 "same person and scene as the photo. Reply with the prompt only, no quotes, no explanations.",
+}
+
+
+async def _prompt_visivo(richiesta: str, tipo: str | None = None) -> str:
     """Il modello locale trasforma la richiesta in un prompt visivo in inglese (gratis)."""
     try:
         testo = await locale.chiedi(
-            "Rewrite this request as one detailed English prompt for an image/video "
-            "generation model. Reply with the prompt only, no quotes, no explanations.\n\n" + richiesta,
+            ISTRUZIONI_PROMPT.get(tipo, ISTRUZIONI_PROMPT[None]) + "\n\n" + richiesta,
             modello_ollama=router.regole.get("modello_locale_ollama", "qwen3:4b-instruct-2507-q4_K_M"),
             alias_litellm="locale-chat",
             litellm_url=LITELLM_URL,
@@ -285,21 +300,98 @@ async def _prompt_visivo(richiesta: str) -> str:
     return testo
 
 
+def _prepara_immagine(rif: str) -> str:
+    """Le foto salvate dal Capo in output/ non sono raggiungibili da RunPod: le manda come data URI."""
+    if "/output/" in rif and not rif.startswith("data:"):
+        nome = os.path.basename(rif.split("?")[0])
+        file = runpod_client.CARTELLA_OUTPUT / nome
+        if file.exists():
+            tipo = mimetypes.guess_type(nome)[0] or "image/png"
+            return f"data:{tipo};base64," + base64.b64encode(file.read_bytes()).decode()
+    return rif
+
+
+def _dimensioni(dati: bytes) -> tuple[int, int] | None:
+    """Larghezza e altezza di un PNG o JPEG leggendo solo l'intestazione."""
+    if dati[:8] == b"\x89PNG\r\n\x1a\n" and len(dati) >= 24:
+        return struct.unpack(">II", dati[16:24])
+    if dati[:2] == b"\xff\xd8":
+        i = 2
+        while i + 9 < len(dati):
+            if dati[i] != 0xFF:
+                i += 1
+                continue
+            marcatore = dati[i + 1]
+            lunghezza = struct.unpack(">H", dati[i + 2:i + 4])[0]
+            if marcatore in (0xC0, 0xC1, 0xC2):
+                h, w = struct.unpack(">HH", dati[i + 5:i + 9])
+                return w, h
+            i += 2 + lunghezza
+    if dati[:4] == b"RIFF" and dati[8:12] == b"WEBP" and dati[12:16] == b"VP8X":
+        w = int.from_bytes(dati[24:27], "little") + 1
+        h = int.from_bytes(dati[27:30], "little") + 1
+        return w, h
+    return None
+
+
+async def _orientamento(rif: str) -> str:
+    """verticale / orizzontale / quadrata, guardando la foto (orizzontale se non si capisce)."""
+    try:
+        if rif.startswith("data:"):
+            dati = base64.b64decode(rif.split(",", 1)[1][:200000] + "==")
+        else:
+            async with httpx.AsyncClient(timeout=30, follow_redirects=True) as client:
+                dati = (await client.get(rif, headers={"Range": "bytes=0-65535"})).content
+        dim = _dimensioni(dati)
+    except Exception as e:
+        log.warning("Dimensioni della foto non lette: %r", e)
+        dim = None
+    if not dim:
+        return "orizzontale"
+    w, h = dim
+    if abs(w - h) / max(w, h) < 0.1:
+        return "quadrata"
+    return "verticale" if h > w else "orizzontale"
+
+
+DIMENSIONI = {
+    # endpoint: {orientamento: size}
+    "qwen-image-edit-2511": {"verticale": "1024*1280", "orizzontale": "1280*1024", "quadrata": "1024*1024"},
+    "wan-2-2-i2v-720": {"verticale": "720*1280", "orizzontale": "1280*720", "quadrata": "1280*720"},
+}
+
+
 async def _multimedia(corpo: dict, d: Decisione, stream: bool):
     richiesta = Router.ultimo_messaggio(corpo["messages"])
 
     async def lavora() -> str:
-        prompt = await _prompt_visivo(richiesta)
+        if router.categorie.get(d.categoria, {}).get("richiede_immagine") and not d.immagine:
+            return ("⚠️ Non trovo una foto da usare. Allegala al messaggio, oppure incolla il link di "
+                    "Google Drive (condiviso come «Chiunque abbia il link»).")
+        prompt = await _prompt_visivo(richiesta, d.tipo_prompt)
+        parametri = dict(d.parametri or {})
+        immagine = _prepara_immagine(d.immagine) if d.immagine else None
+        if parametri.get("size") == "auto":
+            if immagine and d.endpoint in DIMENSIONI:
+                parametri["size"] = DIMENSIONI[d.endpoint][await _orientamento(immagine)]
+            else:
+                parametri.pop("size")
         costo = None
+        sorgente = None
         try:
             if d.gestore == "runpod_pubblico":
-                files, costo = await runpod_client.esegui_pubblico(d.endpoint, prompt, d.parametri)
+                files, costo, sorgente = await runpod_client.esegui_pubblico(
+                    d.endpoint, prompt, parametri, immagine=immagine, campo_immagine=d.campo_immagine)
             else:
                 files = await runpod_client.esegui(d.workflow, prompt)
         except runpod_client.RunPodNonConfigurato as e:
             return f"⚠️ {e}\n\nPrompt preparato dal Capo:\n\n```\n{prompt}\n```"
         except Exception as e:
-            return f"⚠️ Errore durante la generazione: {e}"
+            consiglio = ""
+            if immagine and immagine.startswith("data:"):
+                consiglio = ("\n\nSe RunPod non accetta la foto allegata, caricala su Google Drive, condividila "
+                             "come «Chiunque abbia il link» e incolla il link nel messaggio.")
+            return f"⚠️ Errore durante la generazione: {e}{consiglio}"
         righe = [f"**Prompt usato:** {prompt}\n"]
         for f in files:
             link = f if f.startswith("http") else f"{URL_PUBBLICO}/output/{f}"
@@ -309,6 +401,9 @@ async def _multimedia(corpo: dict, d: Decisione, stream: bool):
                 righe.append(f"![risultato]({link})")
         if costo is not None:
             righe.append(f"\n*Costo: {costo:.2f} $*")
+        if sorgente and not sorgente.lower().split("?")[0].endswith((".mp4", ".webm", ".mov")):
+            # link pubblico di RunPod (valido 7 giorni): serve per animare subito questa immagine
+            righe.append(f"\n[🔗 Originale su RunPod (valido 7 giorni)]({sorgente})")
         return "\n".join(righe)
 
     if not stream:
